@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KASMU | Simulation Workbench</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+    <style>
+        :root {
+            --bg: #0a0a0c;
+            --accent: #d946ef;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text: #ffffff;
+            --text-dim: #94a3b8;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+        }
+
+        /* Sidebar Component */
+        .sidebar {
+            width: 320px;
+            background: #0f0f12;
+            border-right: 1px solid var(--glass-border);
+            padding: 2.5rem 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            z-index: 20;
+        }
+
+        .brand { font-size: 1.2rem; font-weight: 600; letter-spacing: 0.1em; }
+        .brand span { color: var(--accent); }
+
+        .object-list {
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .object-list h3 { font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 1rem; }
+        .object-item {
+            padding: 0.8rem 1rem;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+        .object-item:hover { border-color: var(--accent); }
+        
+        .type-tag { width: 8px; height: 8px; border-radius: 50%; }
+        .tag-car { background: #4a4a4d; }
+        .tag-ped { background: #38bdf8; }
+        .tag-cyc { background: #f59e0b; }
+
+        /* Custom Checkbox */
+        .chk-container { position: relative; cursor: pointer; }
+        .chk-container input { visibility: hidden; width: 0; height: 0; }
+        .checkmark {
+            height: 14px; width: 14px; border: 1px solid var(--glass-border); border-radius: 4px;
+            display: inline-block; position: relative;
+        }
+        .chk-container input:checked + .checkmark { background: var(--accent); border-color: var(--accent); }
+        .chk-container input:checked + .checkmark:after {
+            content: ""; position: absolute; left: 4px; top: 1px; width: 3px; height: 6px;
+            border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg);
+        }
+
+        /* Main Workbench Area */
+        .workbench {
+            flex-grow: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-image: radial-gradient(circle at center, #1a1a20 0%, #0a0a0c 100%);
+        }
+
+        .canvas-container {
+            width: 80%; height: 75%;
+            position: relative; border-radius: 24px; overflow: hidden;
+            background: #000; box-shadow: 0 40px 100px -20px rgba(0,0,0,0.8);
+            border: 1px solid var(--glass-border); cursor: grab;
+        }
+        .canvas-container:active { cursor: grabbing; }
+
+        #panzoom-element { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+        #panzoom-element img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+        /* Toolbar */
+        .toolbar { position: absolute; right: 2rem; top: 5rem; display: flex; flex-direction: column; gap: 1rem; }
+        .tool-btn {
+            background: rgba(15, 15, 18, 0.8); backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border); color: white; width: 48px; height: 48px;
+            border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s;
+        }
+        .tool-btn:hover { background: var(--accent); color: white; transform: translateX(-5px); }
+
+        /* Bottom Controls */
+        .bottom-shelf {
+            position: absolute; bottom: 3rem; display: flex; align-items: center; gap: 2rem;
+            padding: 0.8rem 2rem; background: rgba(15, 15, 18, 0.8); backdrop-filter: blur(20px);
+            border-radius: 100px; border: 1px solid var(--glass-border);
+        }
+        .batch-input { display: flex; align-items: center; gap: 1rem; }
+        .batch-input input { background: transparent; border: none; border-bottom: 1px solid var(--glass-border); color: white; width: 40px; text-align: center; outline: none; }
+        .gen-btn { background: var(--accent); color: white; border: none; padding: 0.6rem 1.5rem; border-radius: 100px; cursor: pointer; font-weight: 600; }
+
+        /* Loading Overlay */
+        .loader {
+            position: absolute; inset: 0; background: rgba(10, 10, 12, 0.8); backdrop-filter: blur(4px); z-index: 100;
+            display: none; flex-direction: column; align-items: center; justify-content: center; gap: 1rem;
+        }
+        .spinner { width: 40px; height: 40px; border: 2px solid var(--glass-border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .slider-nav { display: flex; align-items: center; gap: 1.5rem; color: var(--text-dim); font-size: 0.9rem; }
+        .nav-arrow { cursor: pointer; font-size: 1.2rem; transition: color 0.3s; }
+        .nav-arrow:hover { color: white; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="brand">KASMU <span>Workbench</span></div>
+        <div class="object-list" id="objectList">
+            <h3>Scene Entities</h3>
+            <div style="color: var(--text-dim); font-size: 0.8rem; margin-top: 2rem; text-align: center;">
+                Generate simulations to inspect traffic entities
+            </div>
+        </div>
+        <div style="font-size: 0.7rem; color: var(--text-dim);">
+            Powered by KASMU v4 Safety Controller<br>
+            Optimized for Intel XPU Synthesis
+        </div>
+    </div>
+
+    <div class="workbench" id="workbenchRoot">
+        <div class="toolbar">
+            <button class="tool-btn" onclick="zoomIn()" title="Zoom In">+</button>
+            <button class="tool-btn" onclick="zoomOut()" title="Zoom Out">-</button>
+            <button class="tool-btn" onclick="resetZoom()" title="Reset Zoom">⟲</button>
+            <button class="tool-btn" onclick="downloadImage()" title="Download PNG">💾</button>
+            <button class="tool-btn" onclick="toggleFullscreen()" title="Fullscreen">⛶</button>
+        </div>
+
+        <div class="canvas-container" id="canvasFrame">
+            <div id="panzoom-element">
+                <div style="text-align: center; color: var(--text-dim)">
+                    <h2>Laboratory Context Ready</h2>
+                    <p>Trigger XPU Synthesis to start</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-shelf">
+            <div class="batch-input">
+                <input type="number" id="countInput" value="3" min="1" max="10">
+                <button class="gen-btn" onclick="generateBatch()">Generate</button>
+            </div>
+            <div class="slider-nav">
+                <span class="nav-arrow" onclick="moveSlide(-1)">←</span>
+                <span id="counter">0 / 0</span>
+                <span class="nav-arrow" onclick="moveSlide(1)">→</span>
+            </div>
+        </div>
+
+        <div class="loader" id="loader">
+            <div class="spinner"></div>
+            <p id="loaderText">XPU Synthesis in progress...</p>
+        </div>
+    </div>
+
+    <script>
+        let simulationData = [];
+        let currentIndex = 0;
+        let panzoom;
+        let hiddenIdsMap = {}; // Maps scenario_id -> Set of hidden IDs
+
+        function initPanzoom() {
+            const elem = document.getElementById('panzoom-element');
+            if (panzoom) panzoom.destroy();
+            panzoom = Panzoom(elem, { maxScale: 5, canvas: true });
+            elem.parentElement.addEventListener('wheel', panzoom.zoomWithWheel);
+        }
+
+        async function generateBatch() {
+            const n = document.getElementById('countInput').value;
+            const loader = document.getElementById('loader');
+            loader.style.display = 'flex';
+            document.getElementById('loaderText').innerText = "Generating batch simulations...";
+
+            try {
+                const response = await fetch('/api/generate-batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ n: parseInt(n) })
+                });
+                const data = await response.json();
+                simulationData = data.images;
+                currentIndex = 0;
+                hiddenIdsMap = {};
+                renderProduct();
+            } catch (e) { console.error(e); }
+            finally { loader.style.display = 'none'; }
+        }
+
+        async function toggleObject(scenarioId, objectId) {
+            if (!hiddenIdsMap[scenarioId]) hiddenIdsMap[scenarioId] = new Set();
+            
+            if (hiddenIdsMap[scenarioId].has(objectId)) {
+                hiddenIdsMap[scenarioId].delete(objectId);
+            } else {
+                hiddenIdsMap[scenarioId].add(objectId);
+            }
+
+            const loader = document.getElementById('loader');
+            loader.style.display = 'flex';
+            document.getElementById('loaderText').innerText = "Refining scene context...";
+
+            try {
+                const response = await fetch('/api/update-view', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        scenario: scenarioId, 
+                        exclude_ids: Array.from(hiddenIdsMap[scenarioId]) 
+                    })
+                });
+                const data = await response.json();
+                // Update the image URL for this specific scenario
+                simulationData[currentIndex].url = data.url;
+                renderProduct();
+            } catch (e) { console.error(e); }
+            finally { loader.style.display = 'none'; }
+        }
+
+        function renderProduct() {
+            if (simulationData.length === 0) return;
+            const current = simulationData[currentIndex];
+            const viewer = document.getElementById('panzoom-element');
+            viewer.innerHTML = `<img src="/visualisations/${current.url}?t=${Date.now()}" id="activeImage">`;
+            
+            initPanzoom();
+            updateSidebar(current.objects, current.scenario);
+            updateCounter();
+        }
+
+        function updateSidebar(objects, scenarioId) {
+            const list = document.getElementById('objectList');
+            list.innerHTML = '<h3>Scene Entities</h3>';
+            
+            if (!objects || objects.length === 0) {
+                list.innerHTML += '<p style="color: var(--text-dim); font-size: 0.8rem;">No objects detected.</p>';
+                return;
+            }
+
+            const hidden = hiddenIdsMap[scenarioId] || new Set();
+
+            objects.forEach(obj => {
+                const item = document.createElement('div');
+                item.className = 'object-item';
+                const typeClass = obj.type === 'pedestrian' ? 'tag-ped' : (obj.type.includes('cyclist') ? 'tag-cyc' : 'tag-car');
+                
+                item.innerHTML = `
+                    <label class="chk-container">
+                        <input type="checkbox" ${hidden.has(obj.id) ? '' : 'checked'} 
+                               onchange="toggleObject('${scenarioId}', '${obj.id}')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div class="type-tag ${typeClass}"></div>
+                    <div style="flex-grow: 1">
+                        <div style="font-weight: 600;">${obj.type.toUpperCase()}</div>
+                        <div style="font-size: 0.7rem; color: var(--text-dim);">ID: ${obj.id.substring(0,8)}...</div>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function moveSlide(dir) {
+            if (simulationData.length === 0) return;
+            currentIndex = (currentIndex + dir + simulationData.length) % simulationData.length;
+            renderProduct();
+        }
+
+        function updateCounter() {
+            document.getElementById('counter').innerText = `${currentIndex + 1} / ${simulationData.length}`;
+        }
+
+        function zoomIn() { panzoom.zoomIn(); }
+        function zoomOut() { panzoom.zoomOut(); }
+        function resetZoom() { panzoom.reset(); }
+        function downloadImage() {
+            const img = document.getElementById('activeImage');
+            if (!img) return;
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = `kasmu_refined_${simulationData[currentIndex].scenario.substring(0,8)}.png`;
+            link.click();
+        }
+        function toggleFullscreen() {
+            const elem = document.getElementById('workbenchRoot');
+            if (!document.fullscreenElement) elem.requestFullscreen();
+            else document.exitFullscreen();
+        }
+    </script>
+</body>
+</html>

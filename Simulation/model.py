@@ -3,10 +3,24 @@ import torch.nn as nn
 
 class KASMUModel_v4(nn.Module):
     """
-    KASMU v4 Architecture
-    Optimized for C2 continuous trajectory prediction with 0.14 m/s³ jerk.
+    KASMU v4 Architecture: Kinematic-Aware Safety Monitoring Unit.
+    
+    This model predicts future vehicle trajectories while ensuring C2 continuity 
+    and adherence to kinematic constraints (0.14 m/s³ jerk limit).
+    
+    Architecture components:
+    - LSTM Encoder: Processes historical state features (Batch, 20, 5).
+    - Context Net: Conditions the hidden state on lane topology context.
+    - GRU Decoder: Iteratively predicts acceleration changes.
+    - Multi-Head Jerk Head: Predicts delta acceleration for 3 different scenarios.
     """
     def __init__(self, input_dim=5, hidden_dim=256):
+        """
+        Initializes the model.
+        Args:
+            input_dim (int): Number of features per timestep [x, y, vx, vy, lane_context].
+            hidden_dim (int): Dimensionality of the latent representation.
+        """
         super().__init__()
         self.horizon = 30
         self.dt = 0.1
@@ -20,6 +34,13 @@ class KASMUModel_v4(nn.Module):
         self.jerk_head = nn.Linear(hidden_dim, 6)
 
     def forward(self, x):
+        """
+        Forward pass for trajectory prediction.
+        Input:
+            x (Tensor): State history of shape (Batch, 20, 5).
+        Output:
+            preds (Tensor): Predicted multi-head trajectory of shape (Batch, 30, 2, 3).
+        """
         batch_size = x.size(0)
         # Assuming the 5th dimension is lane context
         lane_context = x[:, -1, 4:5]

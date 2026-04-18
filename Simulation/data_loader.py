@@ -7,12 +7,23 @@ from typing import Dict, Any, List, Optional
 
 def get_scenario_data(scenario_folder: str):
     """
-    Implements the user-provided preprocessing logic for a scenario.
+    Implements normalization and feature extraction for a single scenario.
+    
+    This matches the specific ZF-KASMU hackathon preprocessing requirements:
+    1. Origin Shift: Coordinates are normalized relative to the current position 
+       at index 19 (t=2.0s).
+    2. Vector Layout: [x, y, vx, vy, lane_count].
+    3. Windowing: 50 steps total (20 history, 30 future).
+    
+    Args:
+        scenario_folder (str): Absolute path to the folder containing parquet and json files.
+        
     Returns:
-        history: (20, 5) tensor for model input
-        future_gt: (30, 2) array for ground truth visualization
-        origin: [x, y] used for normalization
-        lane_count: int
+        dict: Processed tensors and metadata:
+            - "history": np.ndarray (20, 5) - Encoder input
+            - "future_gt": np.ndarray (30, 2) - Evaluation ground truth
+            - "origin": np.ndarray [x, y] - Translation vector used
+            - "lane_count": int - Environmental context feature
     """
     try:
         parquet_path = glob(os.path.join(scenario_folder, "*.parquet"))[0]
@@ -90,3 +101,31 @@ def get_normalized_map(scenario_folder: str, origin: np.ndarray):
     except Exception as e:
         print(f"Error processing map for {scenario_folder}: {e}")
         return None
+
+def get_surrounding_objects(scenario_folder: str, origin: np.ndarray):
+    """
+    Extracts all actors in the scene at t=2.0s (index 19).
+    """
+    try:
+        parquet_path = glob(os.path.join(scenario_folder, "*.parquet"))[0]
+        df = pd.read_parquet(parquet_path)
+        focal_id = df['focal_track_id'].iloc[0]
+        
+        # Get all objects at index 19
+        snapshot = df[df['timestep'] == 19]
+        
+        objects = []
+        for _, row in snapshot.iterrows():
+            if row['track_id'] == focal_id:
+                continue
+                
+            objects.append({
+                "id": row['track_id'],
+                "type": row['object_type'],
+                "pos": [row['position_x'] - origin[0], row['position_y'] - origin[1]],
+                "heading": row['heading']
+            })
+        return objects
+    except Exception as e:
+        print(f"Error extracting surrounding objects: {e}")
+        return []

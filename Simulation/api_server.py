@@ -4,6 +4,14 @@ import numpy as np
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
+from fastapi.staticfiles import StaticFiles
+
+"""
+KASMU v4 API Server
+Integrated system for trajectory prediction, safety verification, and simulation visualization.
+Optimized for Intel XPU via IPEX.
+"""
+
 try:
     from .model import KASMUModel_v4
 except (ImportError, ValueError):
@@ -12,8 +20,10 @@ except (ImportError, ValueError):
 from fastapi.staticfiles import StaticFiles
 try:
     from .data_loader import get_scenario_data, get_normalized_map
+    from .run_visualizer import run_visualizer
 except (ImportError, ValueError):
     from data_loader import get_scenario_data, get_normalized_map
+    from run_visualizer import run_visualizer
 
 # --- Intel & Hardware Acceleration ---
 try:
@@ -206,11 +216,64 @@ async def evaluate_scenario(scenario_id: str):
         "origin": data["origin"].tolist()
     }
 
-# Mount Static Files for Dashboard
+@app.post("/api/generate-batch")
+async def generate_batch(request: dict):
+    """
+    Generates 'n' simulations from the test set via the visualizer.
+    Returns a list of image filenames.
+    """
+    n = request.get("n", 1)
+    seed = 42
+    skip = 10000
+    
+    # Get all scenarios
+    all_scenarios = sorted([d for d in os.listdir(VAL_DIR) if os.path.isdir(os.path.join(VAL_DIR, d))])
+    import random
+    random.seed(seed)
+    random.shuffle(all_scenarios)
+    
+    test_pool = all_scenarios[skip:]
+    samples = random.sample(test_pool, min(n, len(test_pool)))
+    
+    generated_data = []
+    for sid in samples:
+        filename, surroundings = run_visualizer(scenario_id=sid)
+        if filename:
+            generated_data.append({
+                "url": filename,
+                "scenario": sid,
+                "objects": surroundings
+            })
+            
+    return {"images": generated_data}
+
+@app.post("/api/update-view")
+async def update_view(request: dict):
+    """
+    Re-renders a specific scenario while excluding certain object IDs.
+    """
+    scenario_id = request.get("scenario")
+    exclude_ids = request.get("exclude_ids", [])
+    
+    # Trigger re-generation with specific exclusions
+    filename, surroundings = run_visualizer(scenario_id=scenario_id, exclude_ids=exclude_ids)
+    return {"url": filename, "objects": surroundings}
+
+# Mount Static Files
 STATIC_PATH = os.path.join(os.path.dirname(__file__), "static")
+VIS_PATH = os.path.join(BASE_DIR, "Visualisations")
+
 if os.path.exists(STATIC_PATH):
-    app.mount("/", StaticFiles(directory=STATIC_PATH, html=True), name="static")
+    app.mount("/static", StaticFiles(directory=STATIC_PATH, html=True), name="static")
+
+if os.path.exists(VIS_PATH):
+    app.mount("/visualisations", StaticFiles(directory=VIS_PATH), name="visualisations")
+
+@app.get("/")
+async def get_index():
+    from fastapi.responses import FileResponse
+    return FileResponse(os.path.join(STATIC_PATH, "gallery.html"))
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)
