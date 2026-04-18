@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KASMU Trajectory Visualizer</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <header>
+                <h1>KASMU <span>v4</span></h1>
+                <p>Trajectory Explorer</p>
+            </header>
+            <div class="search-box">
+                <input type="text" id="scenarioSearch" placeholder="Filter scenarios...">
+            </div>
+            <ul id="scenarioList" class="scenario-list">
+                <li class="loading">Fetching scenarios...</li>
+            </ul>
+        </aside>
+
+        <main class="viewport">
+            <div id="canvasContainer" class="canvas-container">
+                <canvas id="mapCanvas"></canvas>
+                <div class="controls-overlay">
+                    <div class="legend">
+                        <div class="item"><span class="dot history"></span> History (2s)</div>
+                        <div class="item"><span class="dot gt"></span> Ground Truth (3s)</div>
+                        <div class="item"><span class="dot pred"></span> KASMU Prediction</div>
+                        <div class="item"><span class="dot safety"></span> Safety Envelope</div>
+                    </div>
+                    <div class="view-actions">
+                        <button id="resetView">Reset View</button>
+                    </div>
+                </div>
+            </div>
+            
+            <section class="info-panel">
+                <div class="metadata card">
+                    <h3>Scenario Info</h3>
+                    <div id="scenarioMeta">Select a scenario to begin.</div>
+                </div>
+                <div class="metrics card">
+                    <h3>Prediction Metrics</h3>
+                    <div class="metrics-grid">
+                        <div class="metric">
+                            <span class="label">Jerk Continuity</span>
+                            <span class="value" id="jerkVal">--</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">Horizon Confidence</span>
+                            <span class="value" id="confVal">--</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="main.js"></script>
+</body>
+</html>

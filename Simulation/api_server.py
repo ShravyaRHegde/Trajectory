@@ -9,6 +9,12 @@ try:
 except (ImportError, ValueError):
     from model import KASMUModel_v4
 
+from fastapi.staticfiles import StaticFiles
+try:
+    from .data_loader import get_scenario_data, get_normalized_map
+except (ImportError, ValueError):
+    from data_loader import get_scenario_data, get_normalized_map
+
 # --- Intel & Hardware Acceleration ---
 try:
     import intel_extension_for_pytorch as ipex
@@ -151,6 +157,59 @@ async def verify_integrity():
         }
     except Exception as e:
         return {"integrity_check": "failed", "error": str(e)}
+
+# --- Visualisation & Scenario Endpoints ---
+
+VAL_DIR = os.path.join(BASE_DIR, "val")
+
+@app.get("/scenarios")
+async def list_scenarios():
+    """Returns a list of scenario IDs from the validation directory."""
+    if not os.path.exists(VAL_DIR):
+        return []
+    return [d for d in os.listdir(VAL_DIR) if os.path.isdir(os.path.join(VAL_DIR, d))]
+
+@app.get("/evaluate/{scenario_id}")
+async def evaluate_scenario(scenario_id: str):
+    """
+    Combines data loading, map processing, and model prediction.
+    Used by the frontend dashboard.
+    """
+    scenario_path = os.path.join(VAL_DIR, scenario_id)
+    if not os.path.exists(scenario_path):
+        raise HTTPException(status_code=404, detail="Scenario not found")
+    
+    # Load and Preprocess Data
+    data = get_scenario_data(scenario_path)
+    if data is None:
+        raise HTTPException(status_code=500, detail="Error processing scenario data")
+    
+    # Run Prediction
+    if model is None:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+    
+    with torch.no_grad():
+        # Input shape (20, 5) -> (1, 20, 5)
+        history_tensor = torch.tensor(data["history"], dtype=torch.float32).unsqueeze(0).to(device)
+        preds = model(history_tensor)
+        
+    # Get Map geometry
+    map_geom = get_normalized_map(scenario_path, data["origin"])
+    
+    return {
+        "scenario_id": scenario_id,
+        "history": data["history"].tolist(),
+        "future_gt": data["future_gt"].tolist(),
+        "prediction": preds.cpu().numpy().tolist(), # (1, 30, 2, 3)
+        "safety_envelope": q_horizon.tolist(),
+        "map": map_geom,
+        "origin": data["origin"].tolist()
+    }
+
+# Mount Static Files for Dashboard
+STATIC_PATH = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(STATIC_PATH):
+    app.mount("/", StaticFiles(directory=STATIC_PATH, html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
