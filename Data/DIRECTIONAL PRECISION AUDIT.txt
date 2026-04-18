@@ -1,0 +1,4 @@
+Lateral (Steering) Precision:    1.0067 meters
+Longitudinal (Speed) Precision: 0.9817 meters
+----------------------------------------
+Bias: Speed uncertainty is 1.0x higher than steering.

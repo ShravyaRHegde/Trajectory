@@ -1,0 +1,6 @@
+Mean Path Jerk: 0.1428 m/s³
+Safety Coverage: 94.11%
+Accuracy:        ADE: 1.566m | FDE: 3.796m
+Inference Freq:  4856.4 Hz
+-----------------------------------
+Calibration ECE: 0.04107922663291297

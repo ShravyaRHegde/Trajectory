@@ -1,0 +1,4 @@
+Safety Decisions: 138 Prevented Collisions
+   (Scenarios where the Ribbon triggered a brake before the Median hit)
+Critical Failures: 345 Hard Collisions
+Decision IQ: 28.57%
