@@ -46,20 +46,35 @@
             overflow-y: auto;
         }
 
-        .object-list h3 { font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 1rem; }
+        .object-list h3 { font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; }
+        
+        /* Custom Scrollbar */
+        .object-list::-webkit-scrollbar { width: 5px; }
+        .object-list::-webkit-scrollbar-track { background: transparent; }
+        .object-list::-webkit-scrollbar-thumb { 
+            background: rgba(255,255,255,0.05); 
+            border-radius: 10px; 
+            transition: background 0.3s;
+        }
+        .object-list::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
         .object-item {
-            padding: 0.8rem 1rem;
-            background: var(--glass);
+            padding: 1.2rem;
+            background: rgba(255, 255, 255, 0.02);
             border: 1px solid var(--glass-border);
-            border-radius: 12px;
+            border-radius: 16px;
             margin-bottom: 0.8rem;
             display: flex;
             align-items: center;
-            gap: 0.8rem;
+            gap: 1rem;
             font-size: 0.9rem;
-            transition: all 0.3s;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .object-item:hover { border-color: var(--accent); }
+        .object-item:hover { 
+            background: rgba(255, 255, 255, 0.04);
+            border-color: var(--accent);
+            transform: translateX(5px);
+        }
         
         .type-tag { width: 8px; height: 8px; border-radius: 50%; }
         .tag-car { background: #4a4a4d; }
@@ -118,7 +133,28 @@
             border-radius: 100px; border: 1px solid var(--glass-border);
         }
         .batch-input { display: flex; align-items: center; gap: 1rem; }
-        .batch-input input { background: transparent; border: none; border-bottom: 1px solid var(--glass-border); color: white; width: 40px; text-align: center; outline: none; }
+        .batch-input input {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--glass-border);
+            color: white;
+            width: 50px;
+            text-align: center;
+            outline: none;
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 0.2rem 0;
+        }
+
+        /* Hide browser-default spinners for a cleaner 'Pro' look */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
         .gen-btn { background: var(--accent); color: white; border: none; padding: 0.6rem 1.5rem; border-radius: 100px; cursor: pointer; font-weight: 600; }
 
         /* Loading Overlay */
@@ -132,13 +168,53 @@
         .slider-nav { display: flex; align-items: center; gap: 1.5rem; color: var(--text-dim); font-size: 0.9rem; }
         .nav-arrow { cursor: pointer; font-size: 1.2rem; transition: color 0.3s; }
         .nav-arrow:hover { color: white; }
+        /* Legend Overlay */
+        .legend-overlay {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            background: rgba(15, 15, 18, 0.7);
+            backdrop-filter: blur(15px);
+            padding: 1rem 1.2rem;
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            z-index: 15;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .legend-item { display: flex; align-items: center; gap: 0.8rem; font-size: 0.75rem; font-weight: 400; color: var(--text-dim); }
+        .legend-line { width: 24px; height: 3px; border-radius: 10px; }
+        .line-hist { background: #38bdf8; }
+        .line-pred { background: #d946ef; }
+        .line-gt { background: #10b981; border: 1px dashed rgba(255,255,255,0.2); }
+
     </style>
 </head>
 <body>
     <div class="sidebar">
         <div class="brand">KASMU <span>Workbench</span></div>
         <div class="object-list" id="objectList">
-            <h3>Scene Entities</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h3 style="margin: 0;">Scene Entities</h3>
+                <button style="
+                    background: rgba(217, 70, 239, 0.1);
+                    border: 1px solid rgba(217, 70, 239, 0.3);
+                    color: var(--accent);
+                    padding: 0.3rem 0.8rem;
+                    border-radius: 6px;
+                    font-size: 0.65rem;
+                    font-family: inherit;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                " onmouseover="this.style.background='var(--accent)'; this.style.color='white'" 
+                   onmouseout="this.style.background='rgba(217, 70, 239, 0.1)'; this.style.color='var(--accent)'"
+                   onclick="toggleAllObjects()">Toggle All</button>
+            </div>
             <div style="color: var(--text-dim); font-size: 0.8rem; margin-top: 2rem; text-align: center;">
                 Generate simulations to inspect traffic entities
             </div>
@@ -150,6 +226,11 @@
     </div>
 
     <div class="workbench" id="workbenchRoot">
+        <div class="legend-overlay">
+            <div class="legend-item"><div class="legend-line line-hist"></div> HISTORY (2s)</div>
+            <div class="legend-item"><div class="legend-line line-pred"></div> KASMU PREDICTION</div>
+            <div class="legend-item"><div class="legend-line line-gt"></div> GROUND TRUTH</div>
+        </div>
         <div class="toolbar">
             <button class="tool-btn" onclick="zoomIn()" title="Zoom In">+</button>
             <button class="tool-btn" onclick="zoomOut()" title="Zoom Out">-</button>
@@ -219,6 +300,42 @@
             finally { loader.style.display = 'none'; }
         }
 
+        async function toggleAllObjects() {
+            const current = simulationData[currentIndex];
+            if (!current) return;
+            const scenarioId = current.scenario;
+            
+            if (!hiddenIdsMap[scenarioId]) hiddenIdsMap[scenarioId] = new Set();
+            
+            // If anything is currently shown, hide all. Otherwise show all.
+            const allShown = current.objects.every(obj => !hiddenIdsMap[scenarioId].has(obj.id));
+            
+            if (allShown) {
+                current.objects.forEach(obj => hiddenIdsMap[scenarioId].add(obj.id));
+            } else {
+                hiddenIdsMap[scenarioId].clear();
+            }
+
+            const loader = document.getElementById('loader');
+            loader.style.display = 'flex';
+            document.getElementById('loaderText').innerText = "Refining scene context...";
+
+            try {
+                const response = await fetch('/api/update-view', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        scenario: scenarioId, 
+                        exclude_ids: Array.from(hiddenIdsMap[scenarioId]) 
+                    })
+                });
+                const data = await response.json();
+                simulationData[currentIndex].url = data.url;
+                renderProduct();
+            } catch (e) { console.error(e); }
+            finally { loader.style.display = 'none'; }
+        }
+
         async function toggleObject(scenarioId, objectId) {
             if (!hiddenIdsMap[scenarioId]) hiddenIdsMap[scenarioId] = new Set();
             
@@ -242,7 +359,6 @@
                     })
                 });
                 const data = await response.json();
-                // Update the image URL for this specific scenario
                 simulationData[currentIndex].url = data.url;
                 renderProduct();
             } catch (e) { console.error(e); }
@@ -262,7 +378,28 @@
 
         function updateSidebar(objects, scenarioId) {
             const list = document.getElementById('objectList');
-            list.innerHTML = '<h3>Scene Entities</h3>';
+            // Premium Header with Button-style Toggle
+            list.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h3 style="margin: 0;">Scene Entities</h3>
+                    <button style="
+                        background: rgba(217, 70, 239, 0.1);
+                        border: 1px solid rgba(217, 70, 239, 0.3);
+                        color: var(--accent);
+                        padding: 0.3rem 0.8rem;
+                        border-radius: 6px;
+                        font-size: 0.65rem;
+                        font-family: inherit;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                        text-transform: uppercase;
+                        letter-spacing: 0.05em;
+                    " onmouseover="this.style.background='var(--accent)'; this.style.color='white'" 
+                       onmouseout="this.style.background='rgba(217, 70, 239, 0.1)'; this.style.color='var(--accent)'"
+                       onclick="toggleAllObjects()">Toggle All</button>
+                </div>
+            `;
             
             if (!objects || objects.length === 0) {
                 list.innerHTML += '<p style="color: var(--text-dim); font-size: 0.8rem;">No objects detected.</p>';

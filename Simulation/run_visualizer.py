@@ -26,7 +26,7 @@ VAL_DIR = os.path.join(BASE_DIR, "val")
 MODEL_PATH = os.path.join(BASE_DIR, "Model", "kasmu_v4_weights.pth")
 SAFETY_KEY_PATH = os.path.join(BASE_DIR, "Model", "q_horizon_v4.npy")
 
-def run_visualizer(scenario_id=None, output_name=None):
+def run_visualizer(scenario_id=None, output_name=None, exclude_ids=None):
     # 1. Setup Device
     device = torch.device("xpu" if torch.xpu.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
 
@@ -72,7 +72,11 @@ def run_visualizer(scenario_id=None, output_name=None):
             ax.plot(pts[:, 0], pts[:, 1], color='#333336', linestyle='--', linewidth=0.5, zorder=2)
 
     # NEW: Draw Surrounding Objects with Annotations
+    if exclude_ids is None: exclude_ids = []
     for obj in surroundings:
+        if obj['id'] in exclude_ids:
+            continue
+            
         color = '#4a4a4d' # default (other vehicles)
         label_text = "CAR"
         if obj['type'] == 'pedestrian': 
