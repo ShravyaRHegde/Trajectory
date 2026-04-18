@@ -2,6 +2,7 @@
 val/
 Model/
 zf_training_data.npy
+Visualisations/
 
 # Python and Environment
 __pycache__/

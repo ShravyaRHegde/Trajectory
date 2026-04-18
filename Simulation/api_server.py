@@ -1,6 +1,8 @@
 import os
 import torch
 import numpy as np
+import shutil
+import time
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
@@ -86,6 +88,9 @@ async def load_resources():
         # Load Safety Key
         q_horizon = np.load(SAFETY_KEY_PATH)
         
+        # Initial Cache Cleanup
+        managed_cleanup(force_all=True)
+        
         print(f"KASMU v4 Safety Controller is LIVE on {device} ({ACCELERATION})")
     except Exception as e:
         print(f"Failed to load model resources: {e}")
@@ -104,7 +109,37 @@ class PredictionResponse(BaseModel):
     status: str
 
 # --- Endpoints ---
-@app.get("/health")
+def managed_cleanup(force_all=False, max_files=100):
+    """
+    Prevents storage bloat by managing the Visualisations directory.
+    If force_all is True, wipes everything.
+    Otherwise, ensures we stay under max_files limit by deleting oldest files.
+    """
+    try:
+        vis_path = os.path.join(BASE_DIR, "Visualisations")
+        if not os.path.exists(vis_path):
+            os.makedirs(vis_path)
+            return
+
+        files = [os.path.join(vis_path, f) for f in os.listdir(vis_path)]
+        
+        if force_all:
+            for f in files:
+                try: os.unlink(f)
+                except: pass
+            print("💾 Simulation cache wiped for fresh session.")
+        elif len(files) > max_files:
+            # Sort by modification time and delete oldest
+            files.sort(key=os.path.getmtime)
+            to_delete = len(files) - max_files
+            for i in range(to_delete):
+                try: os.unlink(files[i])
+                except: pass
+            print(f"♻️ Rolling cleanup: Deleted {to_delete} old simulations.")
+    except Exception as e:
+        print(f"Cleanup non-fatal error: {e}")
+
+@app.get("/api/health")
 async def health_check():
     return {"status": "online", "device": str(device), "model": "KASMU_v4"}
 
@@ -228,6 +263,10 @@ async def generate_batch(request: dict):
     
     # Get all scenarios
     all_scenarios = sorted([d for d in os.listdir(VAL_DIR) if os.path.isdir(os.path.join(VAL_DIR, d))])
+    
+    # ♻️ Trigger managed cleanup before generation
+    managed_cleanup(max_files=150)
+    
     import random
     random.seed(seed)
     random.shuffle(all_scenarios)
