@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KASMU | Simulation Workbench</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #0a0a0c;
@@ -22,6 +21,46 @@
             background-color: var(--bg);
             color: var(--text);
             height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Navigation ── */
+        .nav {
+            height: 56px;
+            flex-shrink: 0;
+            background: rgba(10,10,12,0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 50;
+        }
+        .nav-brand { font-size: 1rem; font-weight: 700; letter-spacing: 0.12em; color: white; text-decoration: none; }
+        .nav-brand span { color: var(--accent); }
+        .nav-links { display: flex; gap: 0.4rem; }
+        .nav-link {
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-decoration: none;
+            color: #94a3b8;
+            transition: all 0.25s;
+        }
+        .nav-link:hover { background: var(--glass); color: white; }
+        .nav-link.active {
+            background: rgba(217, 70, 239, 0.15);
+            border: 1px solid rgba(217, 70, 239, 0.3);
+            color: var(--accent);
+        }
+
+        /* ── Workbench Layout ── */
+        .workbench-shell {
+            flex: 1;
             overflow: hidden;
             display: flex;
         }
@@ -191,8 +230,20 @@
         .line-gt { background: #10b981; border: 1px dashed rgba(255,255,255,0.2); }
 
     </style>
+    <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
 </head>
 <body>
+    <!-- Navigation Bar -->
+    <nav class="nav">
+        <a href="/" class="nav-brand">KASMU <span>v4</span></a>
+        <div class="nav-links">
+            <a href="/" class="nav-link active">Workbench</a>
+            <a href="/dashboard" class="nav-link">Intelligence</a>
+        </div>
+    </nav>
+
+    <!-- Workbench Shell -->
+    <div class="workbench-shell">
     <div class="sidebar">
         <div class="brand">KASMU <span>Workbench</span></div>
         <div class="object-list" id="objectList">
@@ -264,7 +315,8 @@
             <div class="spinner"></div>
             <p id="loaderText">XPU Synthesis in progress...</p>
         </div>
-    </div>
+    </div> <!-- /workbench -->
+    </div> <!-- /workbench-shell -->
 
     <script>
         let simulationData = [];

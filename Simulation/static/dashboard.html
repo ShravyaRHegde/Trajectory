@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KASMU | Intelligence Dashboard</title>
+    <meta name="description" content="KASMU v4 Model Performance Dashboard — Safety metrics, trajectory accuracy, and system audit reports.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #1c2128;
+            --surface3: #21262d;
+            --border: rgba(48, 54, 61, 0.9);
+            --border-accent: rgba(255,255,255,0.06);
+
+            --accent:  #58a6ff;   /* GitHub blue – professional & calm */
+            --green:   #3fb950;
+            --amber:   #d29922;
+            --red:     #f85149;
+            --purple:  #bc8cff;
+            --teal:    #39d353;
+            --orange:  #f0883e;
+
+            --text:      #e6edf3;
+            --text-dim:  #8b949e;
+            --text-muted: #6e7681;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* ── Nav ── */
+        .nav {
+            position: sticky; top: 0; z-index: 200;
+            background: rgba(13,17,23,0.9);
+            backdrop-filter: blur(20px) saturate(180%);
+            border-bottom: 1px solid var(--border);
+            padding: 0 2rem;
+            display: flex; align-items: center; justify-content: space-between;
+            height: 58px;
+        }
+        .nav-brand { font-size: 0.95rem; font-weight: 700; letter-spacing: 0.04em; color: var(--text); text-decoration: none; }
+        .nav-brand em { color: var(--accent); font-style: normal; }
+        .nav-links { display: flex; gap: 2px; }
+        .nav-link {
+            padding: 0.4rem 0.85rem; border-radius: 6px;
+            font-size: 0.82rem; font-weight: 500; text-decoration: none;
+            color: var(--text-dim); transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+        .nav-link:hover { color: var(--text); background: var(--surface2); }
+        .nav-link.active {
+            color: var(--accent);
+            background: rgba(88,166,255,0.1);
+            border-color: rgba(88,166,255,0.25);
+        }
+
+        /* ── Layout ── */
+        .shell {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            min-height: calc(100vh - 58px);
+        }
+
+        /* ── Sidebar ── */
+        .sidenav {
+            border-right: 1px solid var(--border);
+            padding: 1.5rem 1rem;
+            position: sticky; top: 58px; height: calc(100vh - 58px);
+            overflow-y: auto;
+        }
+        .sidenav-group { margin-bottom: 1.5rem; }
+        .sidenav-label {
+            font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.1em; color: var(--text-muted); padding: 0 0.5rem;
+            margin-bottom: 0.4rem; display: block;
+        }
+        .sidenav-item {
+            display: flex; align-items: center; gap: 0.55rem;
+            padding: 0.4rem 0.5rem; border-radius: 6px;
+            font-size: 0.83rem; color: var(--text-dim); cursor: pointer;
+            transition: all 0.15s; text-decoration: none;
+        }
+        .sidenav-item:hover { color: var(--text); background: var(--surface2); }
+        .sidenav-item.active { color: var(--accent); background: rgba(88,166,255,0.08); font-weight: 500; }
+        .sidenav-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
+        .sidenav-item.active .sidenav-dot { background: var(--accent); }
+
+        /* ── Main Content ── */
+        .content {
+            padding: 2rem 2.5rem 4rem;
+            overflow-x: hidden;
+        }
+
+        .page-header { margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+        .page-title { font-size: 1.5rem; font-weight: 700; color: var(--text); }
+        .page-title em { color: var(--accent); font-style: normal; }
+        .page-subtitle { font-size: 0.83rem; color: var(--text-dim); margin-top: 0.35rem; }
+
+        /* Section anchors */
+        .section { margin-bottom: 3rem; scroll-margin-top: 74px; }
+        .section-title {
+            font-size: 0.78rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.1em; color: var(--text-muted);
+            padding-bottom: 0.6rem; border-bottom: 1px solid var(--border);
+            margin-bottom: 1.25rem;
+        }
+
+        /* ── KPI Grid ── */
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+        .kpi-card {
+            background: var(--surface);
+            padding: 1.25rem 1.5rem;
+            transition: background 0.2s;
+        }
+        .kpi-card:hover { background: var(--surface2); }
+        .kpi-label { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 500; }
+        .kpi-value { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); line-height: 1; }
+        .kpi-unit { font-size: 0.72rem; color: var(--text-dim); margin-top: 0.35rem; }
+        .kpi-trend { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.7rem; font-weight: 600; margin-top: 0.4rem; padding: 0.15rem 0.4rem; border-radius: 4px; }
+        .trend-good  { color: var(--green);  background: rgba(63,185,80,0.1); }
+        .trend-warn  { color: var(--amber);  background: rgba(210,153,34,0.1); }
+        .trend-info  { color: var(--accent); background: rgba(88,166,255,0.1); }
+
+        /* ── Decision Bars ── */
+        .decision-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; }
+        .metric-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 10px; padding: 1.1rem 1.2rem;
+        }
+        .metric-label { font-size: 0.72rem; color: var(--text-muted); font-weight: 500; margin-bottom: 0.4rem; }
+        .metric-value { font-size: 1.35rem; font-weight: 700; margin-bottom: 0.6rem; font-variant-numeric: tabular-nums; }
+        .progress-track { background: var(--surface3); border-radius: 100px; height: 4px; overflow: hidden; }
+        .progress-fill  { height: 100%; border-radius: 100px; transition: width 1.2s cubic-bezier(0.4,0,0.2,1); }
+
+        /* ── Precision ── */
+        .precision-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+        /* ── Complexity ── */
+        .complexity-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .complexity-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 10px; padding: 1.25rem 1.4rem;
+            border-left: 3px solid var(--c-color);
+        }
+        .complexity-tag {
+            font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--c-color); margin-bottom: 1rem; display: block;
+        }
+        .c-stats { display: flex; gap: 2rem; }
+        .c-stat-val { font-size: 1.5rem; font-weight: 700; color: var(--text); line-height: 1; }
+        .c-stat-lbl { font-size: 0.68rem; color: var(--text-muted); margin-top: 0.25rem; text-transform: uppercase; letter-spacing: 0.06em; }
+
+        /* ── Audit Charts — tabbed side-by-side ── */
+
+        /* Tab bar */
+        .audit-tabs {
+            display: flex; gap: 2px;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 10px; padding: 4px;
+            margin-bottom: 1.25rem; overflow-x: auto;
+        }
+        .audit-tab {
+            flex: 1; min-width: max-content;
+            padding: 0.5rem 1rem; border-radius: 7px;
+            font-size: 0.78rem; font-weight: 500; cursor: pointer;
+            color: var(--text-dim); background: transparent;
+            border: none; transition: all 0.18s; white-space: nowrap;
+        }
+        .audit-tab:hover { color: var(--text); background: var(--surface2); }
+        .audit-tab.active {
+            background: var(--surface3); color: var(--text); font-weight: 600;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        /* Panel visibility */
+        .audit-panel { display: none; }
+        .audit-panel.active { display: grid; }
+
+        /* Card layout */
+        .audit-panel {
+            background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+            overflow: hidden;
+            grid-template-columns: 420px 1fr;
+        }
+
+        /* Image wrapper with expand button */
+        .audit-img-wrap {
+            position: relative;
+            background: #010409;
+            display: flex; align-items: center; justify-content: center;
+            border-right: 1px solid var(--border);
+            overflow: hidden; height: 300px;
+            cursor: zoom-in;
+        }
+        .audit-img-wrap img {
+            width: 100%; height: 100%;
+            object-fit: contain;
+            transition: transform 0.2s;
+        }
+        .audit-img-wrap:hover img { transform: scale(1.02); }
+        .expand-btn {
+            position: absolute; top: 0.6rem; right: 0.6rem;
+            background: rgba(13,17,23,0.8); backdrop-filter: blur(6px);
+            border: 1px solid var(--border); border-radius: 6px;
+            color: var(--text-dim); width: 30px; height: 30px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 0.85rem; transition: all 0.15s;
+            opacity: 0;
+        }
+        .audit-img-wrap:hover .expand-btn { opacity: 1; }
+        .expand-btn:hover { color: var(--text); border-color: var(--accent); background: var(--surface2); }
+
+        .audit-meta { padding: 1.5rem 1.6rem; display: flex; flex-direction: column; justify-content: center; }
+        .audit-tag {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            padding: 0.22rem 0.65rem; border-radius: 5px;
+            font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+            margin-bottom: 0.8rem; align-self: flex-start;
+        }
+        .tag-green  { background: rgba(63,185,80,0.1);   color: var(--green);  border: 1px solid rgba(63,185,80,0.2); }
+        .tag-amber  { background: rgba(210,153,34,0.1);  color: var(--amber);  border: 1px solid rgba(210,153,34,0.2); }
+        .tag-blue   { background: rgba(88,166,255,0.1);  color: var(--accent); border: 1px solid rgba(88,166,255,0.2); }
+        .tag-purple { background: rgba(188,140,255,0.1); color: var(--purple); border: 1px solid rgba(188,140,255,0.2); }
+        .tag-red    { background: rgba(248,81,73,0.1);   color: var(--red);    border: 1px solid rgba(248,81,73,0.2); }
+
+        .audit-title { font-size: 0.95rem; font-weight: 700; color: var(--text); margin-bottom: 0.6rem; }
+        .audit-desc  { font-size: 0.83rem; color: var(--text-dim); line-height: 1.7; }
+        .audit-insight {
+            margin-top: 1rem; padding: 0.7rem 0.9rem;
+            background: var(--surface2); border-radius: 8px;
+            border-left: 2px solid var(--insight-c, var(--accent));
+            font-size: 0.78rem; color: var(--text-dim); line-height: 1.55;
+        }
+        .audit-insight strong { color: var(--text); }
+
+        /* ── Lightbox ── */
+        .lightbox {
+            position: fixed; inset: 0; z-index: 999;
+            background: rgba(1,4,9,0.96); backdrop-filter: blur(10px);
+            display: none; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 4rem 2rem 1.5rem;
+            gap: 0;
+        }
+        .lightbox.open { display: flex; }
+        .lb-toolbar {
+            position: absolute; top: 1rem; right: 1rem;
+            display: flex; gap: 0.5rem;
+        }
+        .lb-btn {
+            background: var(--surface2); border: 1px solid var(--border);
+            color: var(--text); border-radius: 7px;
+            padding: 0.4rem 0.7rem; font-size: 0.82rem; cursor: pointer;
+            transition: all 0.15s; font-family: inherit;
+        }
+        .lb-btn:hover { background: var(--surface3); border-color: var(--accent); color: var(--accent); }
+
+        .lb-img-wrap {
+            flex: 1 1 auto;
+            overflow: hidden; display: flex; align-items: center; justify-content: center;
+            width: 100%; max-height: 60vh;
+            cursor: grab;
+        }
+        .lb-img-wrap:active { cursor: grabbing; }
+        .lb-img-wrap img {
+            max-width: 100%; max-height: 100%;
+            object-fit: contain;
+            transform-origin: center;
+            transition: transform 0.15s ease;
+            user-select: none; pointer-events: none;
+        }
+
+        /* Translucent description panel below image */
+        .lb-desc-panel {
+            flex: 0 0 auto;
+            width: 100%; max-width: 860px;
+            margin-top: 1.25rem;
+            background: rgba(22, 27, 34, 0.72);
+            backdrop-filter: blur(16px) saturate(160%);
+            border: 1px solid rgba(48, 54, 61, 0.7);
+            border-radius: 12px;
+            padding: 1rem 1.4rem;
+            display: flex; flex-direction: column; gap: 0.5rem;
+        }
+        .lb-desc-title {
+            font-size: 0.82rem; font-weight: 700; color: var(--text);
+        }
+        .lb-desc-text {
+            font-size: 0.78rem; color: var(--text-dim); line-height: 1.65;
+        }
+        .lb-insight-text {
+            font-size: 0.75rem; color: var(--text-muted); line-height: 1.55;
+            border-left: 2px solid var(--accent); padding-left: 0.7rem;
+        }
+        .lb-insight-text strong { color: var(--text-dim); }
+
+        .lb-hint {
+            position: absolute; top: 1.1rem; left: 1.5rem;
+            font-size: 0.7rem; color: var(--text-muted);
+        }
+
+        /* ── Loader ── */
+        .loader-overlay {
+            position: fixed; inset: 0; z-index: 999; background: var(--bg);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2rem;
+        }
+        .spinner {
+            width: 36px; height: 36px;
+            border: 2px solid var(--surface3); border-top-color: var(--accent);
+            border-radius: 50%; animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loader-text { font-size: 0.85rem; color: var(--text-dim); }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 10px; }
+
+        /* ── Responsive ── */
+        @media (max-width: 1100px) {
+            .shell { grid-template-columns: 1fr; }
+            .sidenav { display: none; }
+            .kpi-grid { grid-template-columns: repeat(2,1fr); }
+            .audit-card { grid-template-columns: 1fr; }
+            .audit-img-wrap { border-right: none; border-bottom: 1px solid var(--border); height: 220px; }
+        }
+        @media (max-width: 640px) {
+            .content { padding: 1.5rem 1rem 3rem; }
+            .kpi-grid, .decision-grid, .complexity-grid, .precision-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="nav">
+    <a href="/" class="nav-brand">KASMU <em>v4</em></a>
+    <div class="nav-links">
+        <a href="/" class="nav-link">Workbench</a>
+        <a href="/dashboard" class="nav-link active">Intelligence</a>
+    </div>
+</nav>
+
+<div class="loader-overlay" id="loaderOverlay">
+    <div class="spinner"></div>
+    <span class="loader-text">Parsing audit reports…</span>
+</div>
+
+<div class="shell">
+    <!-- Sidebar Nav -->
+    <nav class="sidenav">
+        <div class="sidenav-group">
+            <span class="sidenav-label">Overview</span>
+            <a href="#system" class="sidenav-item active"><div class="sidenav-dot"></div>System Performance</a>
+            <a href="#decision" class="sidenav-item"><div class="sidenav-dot"></div>Decision Quality</a>
+            <a href="#precision" class="sidenav-item"><div class="sidenav-dot"></div>Directional Precision</a>
+            <a href="#complexity" class="sidenav-item"><div class="sidenav-dot"></div>Complexity Breakdown</a>
+        </div>
+        <div class="sidenav-group">
+            <span class="sidenav-label">Visual Audits</span>
+            <a href="#chart-spatial" class="sidenav-item"><div class="sidenav-dot"></div>Spatial Safety</a>
+            <a href="#chart-jerk" class="sidenav-item"><div class="sidenav-dot"></div>Jerk Compliance</a>
+            <a href="#chart-calib" class="sidenav-item"><div class="sidenav-dot"></div>Calibration</a>
+            <a href="#chart-ribbon" class="sidenav-item"><div class="sidenav-dot"></div>Ribbon Expansion</a>
+            <a href="#chart-fde" class="sidenav-item"><div class="sidenav-dot"></div>FDE Distribution</a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="content" id="mainContent" style="display:none;">
+
+        <div class="page-header">
+            <div class="page-title">Intelligence <em>Dashboard</em></div>
+            <div class="page-subtitle">Live model audit · KASMU v4 Safety Controller · Argoverse 2 Validation Set</div>
+        </div>
+
+        <!-- System KPIs -->
+        <section class="section" id="system">
+            <div class="section-title">System Performance</div>
+            <div class="kpi-grid" id="kpiGrid"></div>
+        </section>
+
+        <!-- Decision Quality -->
+        <section class="section" id="decision">
+            <div class="section-title">Decision Quality Audit</div>
+            <div class="decision-grid" id="decisionRow"></div>
+        </section>
+
+        <!-- Directional Precision -->
+        <section class="section" id="precision">
+            <div class="section-title">Directional Precision Audit</div>
+            <div class="precision-grid" id="precisionGrid"></div>
+        </section>
+
+        <!-- Complexity Breakdown -->
+        <section class="section" id="complexity">
+            <div class="section-title">Context-Stratified Evaluation</div>
+            <div class="complexity-grid" id="complexityGrid"></div>
+        </section>
+
+        <!-- Visual Audits (Tabbed) -->
+        <section class="section" id="audits">
+            <div class="section-title">Visual Audit Reports</div>
+
+            <!-- Tab bar -->
+            <div class="audit-tabs" id="auditTabs">
+                <button class="audit-tab active" onclick="switchTab(0)">Spatial Safety</button>
+                <button class="audit-tab" onclick="switchTab(1)">Jerk Compliance</button>
+                <button class="audit-tab" onclick="switchTab(2)">Calibration</button>
+                <button class="audit-tab" onclick="switchTab(3)">Ribbon Expansion</button>
+                <button class="audit-tab" onclick="switchTab(4)">FDE Distribution</button>
+            </div>
+
+            <!-- Panel 0 -->
+            <div class="audit-panel active" id="panel-0">
+                <div class="audit-img-wrap"
+                    data-src="/data/Spatial Safety Analysis.png"
+                    data-title="Spatial Safety Analysis &amp; Velocity Profile"
+                    data-desc="A dual-panel live view of model behaviour in a high-complexity 206-lane intersection. <strong>Left:</strong> Blue history leads into the KASMU predicted path (red). The orange Safety Ribbon envelops the green dashed Ground Truth — a confirmed safe prediction. <strong>Right:</strong> speed rises smoothly from 17.1 to 18.6 m/s, no acceleration spikes."
+                    data-insight="<strong>Why it matters:</strong> Validates that FiLM Context Modulation correctly handles high-complexity scenes with smooth, physically feasible acceleration — the Safety Ribbon works."
+                    onclick="openLightbox(this)">
+                    <img src="/data/Spatial Safety Analysis.png" alt="Spatial Safety Analysis">
+                    <button class="expand-btn" title="Expand">&#x26F6;</button>
+                </div>
+                <div class="audit-meta">
+                    <span class="audit-tag tag-green">Safety Validation</span>
+                    <div class="audit-title">Spatial Safety Analysis &amp; Velocity Profile</div>
+                    <p class="audit-desc">A dual-panel live view of model behaviour in a high-complexity 206-lane intersection. <strong>Left:</strong> Blue history leads into the KASMU predicted path (red). The orange Safety Ribbon envelops the green dashed Ground Truth — a confirmed safe prediction. <strong>Right:</strong> the Triple Integration Loop output — speed rises smoothly from 17.1 to 18.6 m/s, no acceleration spikes.</p>
+                    <div class="audit-insight" style="--insight-c:#3fb950">
+                        <strong>Why it matters:</strong> Validates that FiLM Context Modulation correctly handles high-complexity scenes with smooth, physically feasible acceleration — the Safety Ribbon works.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel 1 -->
+            <div class="audit-panel" id="panel-1">
+                <div class="audit-img-wrap"
+                    data-src="/data/vehicle jerk stability.png"
+                    data-title="Kinematic Compliance Audit (Jerk Space)"
+                    data-desc="Histogram of Jerk values across 500 test scenarios. The dominant peak between <strong>0.1–0.2 m/s³</strong> aligns precisely with the audited Mean Path Jerk of 0.1428 m/s³. The entire distribution sits left of the ZF Comfort Limit (1.0 m/s³) and even below the Elite Smoothness Target (0.5 m/s³)."
+                    data-insight="<strong>Why it matters:</strong> Proves the Physics-Informed Loss eliminates Fault Cascades. No command ever stresses the physical steering rack beyond its safe operating envelope."
+                    onclick="openLightbox(this)">
+                    <img src="/data/vehicle jerk stability.png" alt="Kinematic Compliance Audit">
+                    <button class="expand-btn" title="Expand">&#x26F6;</button>
+                </div>
+                <div class="audit-meta">
+                    <span class="audit-tag tag-amber">Hardware Compliance</span>
+                    <div class="audit-title">Kinematic Compliance Audit (Jerk Space)</div>
+                    <p class="audit-desc">Histogram of Jerk values across 500 test scenarios. The dominant peak between <strong>0.1–0.2 m/s³</strong> aligns precisely with the audited Mean Path Jerk of 0.1428 m/s³. The entire distribution sits left of the ZF Comfort Limit (1.0 m/s³) and even below the Elite Smoothness Target (0.5 m/s³).</p>
+                    <div class="audit-insight" style="--insight-c:#d29922">
+                        <strong>Why it matters:</strong> Proves the Physics-Informed Loss eliminates Fault Cascades. No command ever stresses the physical steering rack beyond its safe operating envelope.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel 2 -->
+            <div class="audit-panel" id="panel-2">
+                <div class="audit-img-wrap"
+                    data-src="/data/calibration.png"
+                    data-title="Conformal Calibration Reliability"
+                    data-desc="Plots <em>Desired Confidence Level</em> (x-axis) against <em>Observed Empirical Coverage</em> (y-axis). The dashed diagonal represents perfect calibration. The KASMU red line stays <strong>above</strong> the diagonal — the model is systematically conservative, delivering more safety than requested."
+                    data-insight="<strong>Why it matters:</strong> Mathematically validates the 94.11% Safety Coverage. The 90% confidence ribbons are statistically honest — the AI is calibrated, not over-confident."
+                    onclick="openLightbox(this)">
+                    <img src="/data/calibration.png" alt="Conformal Calibration Reliability">
+                    <button class="expand-btn" title="Expand">&#x26F6;</button>
+                </div>
+                <div class="audit-meta">
+                    <span class="audit-tag tag-blue">Safety Certificate</span>
+                    <div class="audit-title">Conformal Calibration Reliability</div>
+                    <p class="audit-desc">Plots <em>Desired Confidence Level</em> (x-axis) against <em>Observed Empirical Coverage</em> (y-axis). The dashed diagonal represents perfect calibration. The KASMU red line stays <strong>above</strong> the diagonal — the model is systematically conservative, delivering more safety than requested.</p>
+                    <div class="audit-insight" style="--insight-c:#58a6ff">
+                        <strong>Why it matters:</strong> Mathematically validates the 94.11% Safety Coverage. The 90% confidence ribbons are statistically honest — the AI is calibrated, not over-confident.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel 3 -->
+            <div class="audit-panel" id="panel-3">
+                <div class="audit-img-wrap"
+                    data-src="/data/prediction uncertainty.png"
+                    data-title="Safety Ribbon Expansion Profile"
+                    data-desc="Illustrates how the Safety Envelope Width grows from near-zero at <em>t=0.1s</em> to approximately <strong>15 metres</strong> at <em>t=3.0s</em>. The orange line shows mean uncertainty growth across all scenarios in the validation set."
+                    data-insight="<strong>Why it matters:</strong> Proves the AI is self-aware of temporal uncertainty. Wider ribbons at longer horizons let the safety controller scale braking distance dynamically — not guessing, but reasoning."
+                    onclick="openLightbox(this)">
+                    <img src="/data/prediction uncertainty.png" alt="Safety Ribbon Expansion Profile">
+                    <button class="expand-btn" title="Expand">&#x26F6;</button>
+                </div>
+                <div class="audit-meta">
+                    <span class="audit-tag tag-purple">Explainability</span>
+                    <div class="audit-title">Safety Ribbon Expansion Profile</div>
+                    <p class="audit-desc">Illustrates how the Safety Envelope Width grows from near-zero at <em>t=0.1s</em> to approximately <strong>15 metres</strong> at <em>t=3.0s</em>. The orange line shows mean uncertainty growth across all scenarios in the validation set.</p>
+                    <div class="audit-insight" style="--insight-c:#bc8cff">
+                        <strong>Why it matters:</strong> Proves the AI is self-aware of temporal uncertainty. Wider ribbons at longer horizons let the safety controller scale braking distance dynamically — not guessing, but reasoning.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel 4 -->
+            <div class="audit-panel" id="panel-4">
+                <div class="audit-img-wrap"
+                    data-src="/data/final displacement error.png"
+                    data-title="Final Displacement Error Distribution (FDE)"
+                    data-desc="Each dot = final position error of one scenario at the end of the 3 s prediction horizon. The near-symmetrical scatter confirms lateral and longitudinal uncertainty are balanced at a <strong>1.0× ratio</strong>. Most points cluster near the origin; FDE of <strong>3.796m</strong> is driven by long-tail outliers."
+                    data-insight="<strong>Why it matters:</strong> Outliers at 10–15m are captured by the Safety Ribbon, not the median path. This explains the gap between ADE (1.566m) and FDE — uncertainty compounds with time and the ribbon grows accordingly."
+                    onclick="openLightbox(this)">
+                    <img src="/data/final displacement error.png" alt="Final Displacement Error Distribution">
+                    <button class="expand-btn" title="Expand">&#x26F6;</button>
+                </div>
+                <div class="audit-meta">
+                    <span class="audit-tag tag-red">Accuracy Audit</span>
+                    <div class="audit-title">Final Displacement Error Distribution (FDE)</div>
+                    <p class="audit-desc">Each dot = final position error of one scenario at the end of the 3 s prediction horizon. The near-symmetrical scatter confirms the Directional Precision Audit — steering (lateral) and speed (longitudinal) uncertainty are balanced at a <strong>1.0× ratio</strong>. Most points cluster near the origin; FDE of <strong>3.796m</strong> driven by long-tail outliers.</p>
+                    <div class="audit-insight" style="--insight-c:#f85149">
+                        <strong>Why it matters:</strong> Outliers at 10–15m are captured by the Safety Ribbon, not the median path. This explains the gap between ADE (1.566m) and FDE — uncertainty compounds with time and the ribbon grows accordingly.
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox">
+    <div class="lb-hint">Scroll to zoom &middot; Drag to pan</div>
+    <div class="lb-toolbar">
+        <button class="lb-btn" onclick="lbZoom(0.25)">&#xff0b; Zoom In</button>
+        <button class="lb-btn" onclick="lbZoom(-0.25)">&#xff0d; Zoom Out</button>
+        <button class="lb-btn" onclick="lbReset()">Reset</button>
+        <button class="lb-btn" onclick="closeLightbox()">&#x2715; Close</button>
+    </div>
+    <div class="lb-img-wrap" id="lbWrap">
+        <img id="lbImg" src="" alt="">
+    </div>
+    <div class="lb-desc-panel" id="lbDescPanel">
+        <div class="lb-desc-title" id="lbTitle"></div>
+        <div class="lb-desc-text" id="lbDescText"></div>
+        <div class="lb-insight-text" id="lbInsightText"></div>
+    </div>
+</div>
+
+<script>
+const KPI_DEFS = [
+    { key:'ade',      label:'ADE',               unit:'metres — trajectory accuracy',     trend:'Lower is better', trendClass:'trend-info' },
+    { key:'fde',      label:'FDE',               unit:'metres — endpoint accuracy',       trend:'Lower is better', trendClass:'trend-info' },
+    { key:'coverage', label:'Safety Coverage',   unit:'% scenarios safely bounded',       trend:'Target ≥ 90%',    trendClass:'trend-good' },
+    { key:'freq',     label:'Inference Rate',    unit:'Hz on Intel XPU',                 trend:'Real-time ready', trendClass:'trend-good' },
+    { key:'jerk',     label:'Mean Path Jerk',    unit:'m/s³ — ZF limit is 1.0',          trend:'Well within limit',trendClass:'trend-good' },
+    { key:'ece',      label:'Calibration ECE',   unit:'Lower = better calibrated',        trend:'Conservative',    trendClass:'trend-good' },
+];
+
+async function loadDashboard() {
+    try {
+        const res = await fetch('/api/dashboard-stats');
+        if (!res.ok) throw new Error(res.status);
+        const d = await res.json();
+
+        // KPIs
+        document.getElementById('kpiGrid').innerHTML = KPI_DEFS.map(kpi => `
+            <div class="kpi-card">
+                <div class="kpi-label">${kpi.label}</div>
+                <div class="kpi-value">${d[kpi.key] ?? '—'}</div>
+                <div class="kpi-unit">${kpi.unit}</div>
+                <span class="kpi-trend ${kpi.trendClass}">${kpi.trend}</span>
+            </div>
+        `).join('');
+
+        // Decision Quality
+        const prev  = parseInt(d.prevented) || 0;
+        const fail  = parseInt(d.failures)  || 0;
+        const total = prev + fail || 1;
+        const iq    = parseFloat(d.decision_iq) || 0;
+        document.getElementById('decisionRow').innerHTML = `
+            <div class="metric-card">
+                <div class="metric-label">Prevented Collisions</div>
+                <div class="metric-value" style="color:var(--green)">${d.prevented}</div>
+                <div class="progress-track"><div class="progress-fill" style="width:${(prev/total*100).toFixed(1)}%; background:var(--green)"></div></div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Critical Failures</div>
+                <div class="metric-value" style="color:var(--red)">${d.failures}</div>
+                <div class="progress-track"><div class="progress-fill" style="width:${(fail/total*100).toFixed(1)}%; background:var(--red)"></div></div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Decision IQ</div>
+                <div class="metric-value" style="color:var(--accent)">${d.decision_iq}%</div>
+                <div class="progress-track"><div class="progress-fill" style="width:${iq}%; background:var(--accent)"></div></div>
+            </div>
+        `;
+
+        // Precision
+        const lat  = parseFloat(d.lateral)      || 1;
+        const lon  = parseFloat(d.longitudinal)  || 1;
+        const maxP = Math.max(lat, lon) + 0.2;
+        document.getElementById('precisionGrid').innerHTML = `
+            <div class="metric-card">
+                <div class="metric-label">Lateral (Steering) Precision</div>
+                <div class="metric-value" style="color:var(--accent)">${d.lateral}m</div>
+                <div class="progress-track"><div class="progress-fill" style="width:${(lat/maxP*100).toFixed(0)}%; background:var(--accent)"></div></div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Longitudinal (Speed) Precision</div>
+                <div class="metric-value" style="color:var(--amber)">${d.longitudinal}m</div>
+                <div class="progress-track"><div class="progress-fill" style="width:${(lon/maxP*100).toFixed(0)}%; background:var(--amber)"></div></div>
+            </div>
+        `;
+
+        // Complexity
+        const low  = d.low_complexity  || {};
+        const high = d.high_complexity || {};
+        document.getElementById('complexityGrid').innerHTML = `
+            <div class="complexity-card" style="--c-color:var(--green)">
+                <span class="complexity-tag">Low Complexity</span>
+                <div class="c-stats">
+                    <div><div class="c-stat-val">${low.samples ?? '—'}</div><div class="c-stat-lbl">Scenarios</div></div>
+                    <div><div class="c-stat-val">${low.ade ?? '—'}m</div><div class="c-stat-lbl">ADE</div></div>
+                    <div><div class="c-stat-val">${low.ribbon ?? '—'}m</div><div class="c-stat-lbl">Ribbon Width</div></div>
+                </div>
+            </div>
+            <div class="complexity-card" style="--c-color:var(--accent)">
+                <span class="complexity-tag">High Complexity</span>
+                <div class="c-stats">
+                    <div><div class="c-stat-val">${high.samples ?? '—'}</div><div class="c-stat-lbl">Scenarios</div></div>
+                    <div><div class="c-stat-val">${high.ade ?? '—'}m</div><div class="c-stat-lbl">ADE</div></div>
+                    <div><div class="c-stat-val">${high.ribbon ?? '—'}m</div><div class="c-stat-lbl">Ribbon Width</div></div>
+                </div>
+            </div>
+        `;
+
+    } catch(e) {
+        console.error(e);
+        document.getElementById('kpiGrid').innerHTML = `<p style="color:var(--red);padding:1rem;grid-column:1/-1;">Failed to load dashboard data. Make sure the API server is running.</p>`;
+    } finally {
+        document.getElementById('loaderOverlay').style.display = 'none';
+        document.getElementById('mainContent').style.display  = 'block';
+    }
+}
+
+// ── Tab switching ──
+function switchTab(idx) {
+    document.querySelectorAll('.audit-tab').forEach((t,i) => t.classList.toggle('active', i === idx));
+    document.querySelectorAll('.audit-panel').forEach((p,i) => p.classList.toggle('active', i === idx));
+}
+
+// ── Lightbox logic ──
+let lbScale = 1, lbDragging = false, lbStart = {x:0,y:0}, lbOffset = {x:0,y:0};
+
+function openLightbox(el) {
+    const src     = el.dataset.src;
+    const title   = el.dataset.title;
+    const desc    = el.dataset.desc;
+    const insight = el.dataset.insight;
+    const lb  = document.getElementById('lightbox');
+    const img = document.getElementById('lbImg');
+    img.src = src; img.alt = title;
+    document.getElementById('lbTitle').textContent       = title;
+    document.getElementById('lbDescText').innerHTML      = desc;
+    document.getElementById('lbInsightText').innerHTML   = insight;
+    lbScale = 1; lbOffset = {x:0,y:0};
+    img.style.transform = 'translate(0,0) scale(1)';
+    lb.classList.add('open');
+}
+function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+}
+function lbZoom(delta) {
+    lbScale = Math.min(8, Math.max(0.5, lbScale + delta));
+    updateLbTransform();
+}
+function lbReset() {
+    lbScale = 1; lbOffset = {x:0,y:0}; updateLbTransform();
+}
+function updateLbTransform() {
+    document.getElementById('lbImg').style.transform =
+        `translate(${lbOffset.x}px,${lbOffset.y}px) scale(${lbScale})`;
+}
+
+// Scroll-to-zoom
+document.getElementById('lbWrap').addEventListener('wheel', e => {
+    e.preventDefault();
+    lbZoom(e.deltaY < 0 ? 0.15 : -0.15);
+}, { passive: false });
+
+// Drag-to-pan
+const wrap = document.getElementById('lbWrap');
+wrap.addEventListener('mousedown', e => { lbDragging = true; lbStart = {x: e.clientX - lbOffset.x, y: e.clientY - lbOffset.y}; });
+wrap.addEventListener('mousemove', e => { if (!lbDragging) return; lbOffset = {x: e.clientX - lbStart.x, y: e.clientY - lbStart.y}; updateLbTransform(); });
+wrap.addEventListener('mouseup', () => lbDragging = false);
+wrap.addEventListener('mouseleave', () => lbDragging = false);
+
+// Close on backdrop click
+document.getElementById('lightbox').addEventListener('click', e => { if (e.target === e.currentTarget) closeLightbox(); });
+
+// Keyboard: Escape closes, arrow keys switch tabs
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === '+') lbZoom(0.25);
+    if (e.key === '-') lbZoom(-0.25);
+});
+
+// ── Sidebar scroll-spy ──
+function onScroll() {
+    const items = document.querySelectorAll('.sidenav-item');
+    const sections = document.querySelectorAll('section[id]');
+    let active = null;
+    sections.forEach(s => { if (s.getBoundingClientRect().top < 120) active = s.id; });
+    items.forEach(i => {
+        const href = i.getAttribute('href')?.replace('#','');
+        i.classList.toggle('active', href === active);
+        i.querySelector('.sidenav-dot').style.background = href === active ? 'var(--accent)' : 'var(--text-muted)';
+    });
+}
+window.addEventListener('scroll', onScroll, { passive: true });
+loadDashboard();
+</script>
+</body>
+</html>

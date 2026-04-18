@@ -1,4 +1,5 @@
 import os
+import re
 import torch
 import numpy as np
 import shutil
@@ -298,9 +299,62 @@ async def update_view(request: dict):
     filename, surroundings = run_visualizer(scenario_id=scenario_id, exclude_ids=exclude_ids)
     return {"url": filename, "objects": surroundings}
 
+# --- Dashboard Data API ---
+DATA_DIR = os.path.join(BASE_DIR, "Data")
+
+def _parse_float(text, pattern, default="N/A"):
+    """Extract a float value from text using a regex pattern."""
+    m = re.search(pattern, text)
+    return m.group(1).strip() if m else default
+
+@app.get("/api/dashboard-stats")
+async def get_dashboard_stats():
+    """Parses all Data/*.txt audit files and returns a consolidated JSON payload."""
+    stats = {}
+    try:
+        # --- SYSTEM SUMMARY ---
+        sys_path = os.path.join(DATA_DIR, "SYSTEM SUMMARY.txt")
+        if os.path.exists(sys_path):
+            t = open(sys_path, encoding="utf-8").read()
+            stats["jerk"]       = _parse_float(t, r"Mean Path Jerk:\s+([\d.]+)")
+            stats["coverage"]   = _parse_float(t, r"Safety Coverage:\s+([\d.]+)%")
+            stats["ade"]        = _parse_float(t, r"ADE:\s+([\d.]+)m")
+            stats["fde"]        = _parse_float(t, r"FDE:\s+([\d.]+)m")
+            stats["freq"]       = _parse_float(t, r"Inference Freq:\s+([\d.]+) Hz")
+            stats["ece"]        = _parse_float(t, r"Calibration ECE:\s+([\d.]+)")
+
+        # --- DECISION QUALITY AUDIT ---
+        dec_path = os.path.join(DATA_DIR, "DECISION QUALITY AUDIT.txt")
+        if os.path.exists(dec_path):
+            t = open(dec_path, encoding="utf-8").read()
+            stats["prevented"]  = _parse_float(t, r"Safety Decisions:\s+(\d+)")
+            stats["failures"]   = _parse_float(t, r"Critical Failures:\s+(\d+)")
+            stats["decision_iq"]= _parse_float(t, r"Decision IQ:\s+([\d.]+)%")
+
+        # --- DIRECTIONAL PRECISION AUDIT ---
+        dir_path = os.path.join(DATA_DIR, "DIRECTIONAL PRECISION AUDIT.txt")
+        if os.path.exists(dir_path):
+            t = open(dir_path, encoding="utf-8").read()
+            stats["lateral"]    = _parse_float(t, r"Lateral.*?:\s+([\d.]+)")
+            stats["longitudinal"]= _parse_float(t, r"Longitudinal.*?:\s+([\d.]+)")
+
+        # --- CONTEXT-STRATIFIED REPORT ---
+        ctx_path = os.path.join(DATA_DIR, "CONTEXT-STRATIFIED REPORT.txt")
+        if os.path.exists(ctx_path):
+            t = open(ctx_path, encoding="utf-8").read()
+            low  = re.search(r"Low_Complexity.*?Samples:\s+(\d+).*?ADE:\s+([\d.]+).*?Ribbon:\s+([\d.]+)", t)
+            high = re.search(r"High_Complexity.*?Samples:\s+(\d+).*?ADE:\s+([\d.]+).*?Ribbon:\s+([\d.]+)", t)
+            stats["low_complexity"]  = {"samples": low.group(1),  "ade": low.group(2),  "ribbon": low.group(3)}  if low  else {}
+            stats["high_complexity"] = {"samples": high.group(1), "ade": high.group(2), "ribbon": high.group(3)} if high else {}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Data parsing error: {e}")
+    return stats
+
 # Mount Static Files
 STATIC_PATH = os.path.join(os.path.dirname(__file__), "static")
 VIS_PATH = os.path.join(BASE_DIR, "Visualisations")
+DATA_STATIC_PATH = os.path.join(BASE_DIR, "Data")
 
 if os.path.exists(STATIC_PATH):
     app.mount("/static", StaticFiles(directory=STATIC_PATH, html=True), name="static")
@@ -308,10 +362,18 @@ if os.path.exists(STATIC_PATH):
 if os.path.exists(VIS_PATH):
     app.mount("/visualisations", StaticFiles(directory=VIS_PATH), name="visualisations")
 
+if os.path.exists(DATA_STATIC_PATH):
+    app.mount("/data", StaticFiles(directory=DATA_STATIC_PATH), name="data")
+
 @app.get("/")
 async def get_index():
     from fastapi.responses import FileResponse
     return FileResponse(os.path.join(STATIC_PATH, "gallery.html"))
+
+@app.get("/dashboard")
+async def get_dashboard():
+    from fastapi.responses import FileResponse
+    return FileResponse(os.path.join(STATIC_PATH, "dashboard.html"))
 
 if __name__ == "__main__":
     import uvicorn
