@@ -19,3 +19,8 @@ env/
 .vscode/
 .idea/
 .DS_Store
+# Build and Distribution
+dist/
+build/
+*.egg-info/
+.pytest_cache/

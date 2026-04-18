@@ -1,47 +1,51 @@
 # KASMU Trajectory Prediction & Simulation System
 
-A high-performance system for vehicle trajectory prediction using the **KASMU v4** (Kinematic-Aware Safety Monitoring Unit) architecture. This repository provides a complete pipeline from raw validation data processing to interactive visualization.
+A high-performance trajectory prediction workbench powered by **KASMU v4** (Kinematic-Aware Safety Monitoring Unit). This system provides an end-to-end laboratory environment for evaluating vehicle motion models with real-time XPU acceleration.
 
-## 🚀 System Architecture
+## ✨ Simulation Workbench (Pro Edition)
 
-- **KASMU v4 Brain**: LSTM-GRU architecture optimized for C2 continuity and 0.14 m/s³ jerk limits.
-- **REST API**: FastAPI server with Intel XPU (IPEX) hardware acceleration.
-- **Simulation Engine**: Automated data loader supporting scenario normalization and feature extraction.
-- **Dashboard**: Web-based interactive visualizer for map geometry and trajectory overlays.
+The system includes a premium, web-based Simulation Workbench ([http://localhost:8000](http://localhost:8000)) featuring:
+
+- **Dynamic Scene Synthesis**: Selective object filtering where checking/unchecking entities triggers a high-speed re-render on the Intel XPU.
+- **Interactive Inspection**: Full Pan & Zoom capabilities for detailed intersection analysis.
+- **Smart Quality Guard**: Automated rejection sampling favoring high-confidence, professional scenarios.
+- **Live Metadata Sidebar**: Deep-dive into surrounding traffic actor types and unique track IDs.
+- **High-Res Export**: Native PNG downloads with scenario watermarking.
+
+## 🚀 Hardware Acceleration
+
+Optimized for **Intel XPU (Native)** using the Intel Extension for PyTorch (IPEX). 
+- **Auto-Detection**: The server automatically benchmarks and selects the best available backend (XPU -> CUDA -> CPU).
+- **Inference Latency**: Sub-10ms prediction heads for real-time safety envelope calculation.
 
 ## 📦 Installation
 
-1. Create a virtual environment:
+1. **Environment Setup**:
    ```powershell
    python -m venv venv
    .\venv\Scripts\Activate.ps1
-   ```
-2. Install dependencies:
-   ```powershell
    pip install -r requirements.txt
    ```
 
-## 🛠 Usage
+2. **Run Workbench**:
+   ```powershell
+   python Simulation/api_server.py
+   ```
 
-### 1. Start the API & Dashboard
-```powershell
-python Simulation/api_server.py
-```
-Visit [http://localhost:8000](http://localhost:8000) for the interactive visualizer.
+## 🛠 Project Structure
 
-### 2. Run Static Visualization Script
-Generates high-quality PNGs of model predictions:
-```powershell
-python Simulation/run_visualizer.py
-```
+- `Simulation/api_server.py`: FastAPI backend & Workbench host.
+- `Simulation/run_visualizer.py`: Headless PNG generation & scene synthesis engine.
+- `Simulation/data_loader.py`: Spatial normalization (2.0s anchor) and map extraction.
+- `Simulation/model.py`: KASMU v4 LSTM-GRU architecture.
+- `Visualisations/`: Managed synthesis cache (Auto-rolling cleanup).
 
-## 🧪 API Endpoints
+## 📊 Visual Semantics
 
-- `GET /health`: System status and hardware acceleration info.
-- `GET /verify`: Runs a kinematic integrity check on dummy data.
-- `POST /predict`: Real-time inference on provided history tensors.
-- `GET /scenarios`: Lists available validation scenarios.
-- `GET /evaluate/{id}`: Detailed evaluation including map geometry and ground truth comparison.
+- **Cyan/Blue**: 2.0s Historical context.
+- **Purple**: KASMU Predicted trajectory.
+- **Green**: Ground Truth (Validation anchor).
+- **Tags**: Automated labels for Cars, Pedestrians, and Cyclists.
 
-## 📝 Preprocessing Logic
-All data is normalized using the **index 19 (t=2.0s) origin shift** to ensure the model focuses on local displacement relative to the decision point. Features include `[X, Y, VX, VY, Lane_Count]`.
+---
+*Powered by KASMU v4 Safety Controller.*
