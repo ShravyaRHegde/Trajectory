@@ -1,70 +1,81 @@
-import torch
-import torch.nn as nn
-from torchview import draw_graph
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import os
+import sys
+import io
 
-# Set path for Graphviz (Required for torchview)
-# If you are on Windows and haven't added Graphviz to Path, uncomment below:
-# os.environ["PATH"] += os.pathsep + 'C:/Program Files/Graphviz/bin/'
+# Force UTF-8 encoding for Windows terminals
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-class KASMUModel_v4(nn.Module):
-    def __init__(self, input_dim=5, hidden_dim=256):
-        super().__init__()
-        # Hyperparameters baked in for the trace
-        self.HORIZON = 30
-        self.DT = 0.1
-        
-        self.encoder = nn.LSTM(input_dim, hidden_dim, num_layers=2, batch_first=True, dropout=0.2)
-        self.context_net = nn.Sequential(
-            nn.Linear(1, 64), nn.ReLU(), nn.Linear(64, hidden_dim * 2)
-        )
-        
-        self.decoder_cell = nn.GRUCell(2, hidden_dim) 
-        self.jerk_head = nn.Linear(hidden_dim, 6) 
+def draw_kasmu_v4_architecture():
+    """
+    Generates a high-quality schematic diagram of the KASMU v4 architecture
+    using Matplotlib (No Graphviz dependency required).
+    """
+    fig, ax = plt.subplots(figsize=(14, 8))
+    ax.set_facecolor('#0d0d0f')
+    fig.patch.set_facecolor('#0d0d0f')
+    
+    # 1. Helper for rounded boxes
+    def draw_box(x, y, w, h, label, color, text_color='white'):
+        rect = patches.FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.2", 
+                                      linewidth=2, edgecolor=color, facecolor='#1c1c1f', zorder=3)
+        ax.add_patch(rect)
+        ax.text(x + w/2, y + h/2, label, color=text_color, ha='center', va='center', 
+                fontsize=10, fontweight='bold', zorder=4)
 
-    def forward(self, x):
-        batch_size = x.size(0)
-        lane_context = x[:, -1, 4:5]
-        _, (h_n, _) = self.encoder(x)
-        
-        # FiLM Context Modulation
-        gamma, beta = self.context_net(lane_context).chunk(2, dim=-1)
-        h_t = (gamma * h_n[-1]) + beta
-        
-        curr_pos, curr_vel = x[:, -1, :2], x[:, -1, 2:4]
-        curr_acc = torch.zeros_like(curr_vel) 
-        
-        predictions = []
-        for _ in range(self.HORIZON):
-            h_t = self.decoder_cell(curr_vel, h_t)
-            delta_a = self.jerk_head(h_t).view(batch_size, 2, 3) 
-            
-            # Integration Chain
-            new_acc = curr_acc.unsqueeze(-1) + delta_a
-            new_vel = curr_vel.unsqueeze(-1) + (new_acc * self.DT)
-            new_pos = curr_pos.unsqueeze(-1) + (new_vel * self.DT)
-            predictions.append(new_pos)
-            
-            # Recursive updates
-            curr_pos, curr_vel, curr_acc = new_pos[:,:,1], new_vel[:,:,1], new_acc[:,:,1]
-            
-        return torch.stack(predictions, dim=1)
+    # 2. Draw Components
+    # --- Input Stage ---
+    draw_box(1, 6, 2, 1, "STATE HISTORY\n(20, 5)", '#38bdf8')
+    
+    # --- Encoder Stage ---
+    draw_box(4, 6, 2, 1, "LSTM ENCODER\n(2 Layers)", '#38bdf8')
+    ax.annotate('', xy=(4, 6.5), xytext=(3, 6.5), arrowprops=dict(arrowstyle='->', color='#38bdf8', lw=2))
 
-# --- Execution ---
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = KASMUModel_v4().to(device)
-dummy_input = torch.randn(1, 20, 5).to(device)
+    # --- Context Stage ---
+    draw_box(4, 3, 2, 1, "LANE CONTEXT\n(1, 1)", '#10b981')
+    draw_box(7, 3, 2, 1, "FiLM HEAD\n(Gamma, Beta)", '#10b981')
+    ax.annotate('', xy=(7, 3.5), xytext=(6, 3.5), arrowprops=dict(arrowstyle='->', color='#10b981', lw=2))
 
-# Using depth=1 is often cleaner for LSTMs to avoid showing every internal gate
-model_graph = draw_graph(
-    model, 
-    input_data=dummy_input,
-    expand_nested=True,
-    depth=2, 
-    graph_name="KASMU_v4_Logic",
-    roll=True 
-)
+    # --- Combining Block (FiLM Modulation) ---
+    draw_box(7, 6, 2, 1, "LATENT MIXER\n(FiLM Modulation)", '#d946ef')
+    # From Encoder to Mixer
+    ax.annotate('', xy=(7, 6.5), xytext=(6, 6.5), arrowprops=dict(arrowstyle='->', color='#d946ef', lw=2))
+    # From Context to Mixer
+    ax.annotate('', xy=(8, 6), xytext=(8, 4), arrowprops=dict(arrowstyle='->', color='#d946ef', lw=2))
 
-# Render
-model_graph.visual_graph.render("KASMU_Architecture_v4", format="png")
-print("✅ Diagram generated successfully!")
+    # --- Decoder Stage ---
+    draw_box(10, 6, 2, 1, "GRU DECODER\n(Recursive Cell)", '#d946ef')
+    ax.annotate('', xy=(10, 6.5), xytext=(9, 6.5), arrowprops=dict(arrowstyle='->', color='#d946ef', lw=2))
+
+    # --- Output Head ---
+    draw_box(13, 6, 2, 1, "JERK HEADS\n(Multi-Head)", '#f59e0b')
+    ax.annotate('', xy=(13, 6.5), xytext=(12, 6.5), arrowprops=dict(arrowstyle='->', color='#f59e0b', lw=2))
+
+    # --- Integration Chain ---
+    draw_box(13, 3, 2, 1, "PHYSICS ENGINE\n(Integration ΔJ)", '#f59e0b')
+    ax.annotate('', xy=(14, 4), xytext=(14, 6), arrowprops=dict(arrowstyle='->', color='#f59e0b', lw=2))
+    
+    # --- Final Output ---
+    draw_box(16, 3, 2.5, 1, "PREDICTED TRAJECTORY\n(30, 2, 3)", '#d946ef', text_color='#d946ef')
+    ax.annotate('', xy=(16, 3.5), xytext=(15, 3.5), arrowprops=dict(arrowstyle='->', color='#d946ef', lw=2))
+
+    # Feedback Loop logic
+    ax.annotate('', xy=(11, 7), xytext=(14, 7), arrowprops=dict(arrowstyle='->', color='#d946ef', lw=1, connectionstyle="arc3,rad=.5"))
+    ax.text(12.5, 7.8, "Recursive Feed (3.0s)", color='#d946ef', alpha=0.6, fontsize=8, ha='center')
+
+    # Formatting
+    ax.set_xlim(0, 20)
+    ax.set_ylim(1, 9)
+    plt.axis('off')
+    plt.title("KASMU v4 : Kinematic-Aware Predictive Architecture", color='white', pad=20, fontsize=16, fontweight='bold')
+    
+    # Save
+    output_path = "KASMU_Architecture_v4_Schematic.png"
+    plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='#0d0d0f')
+    print(f"Architecture schematic saved successfully: {os.path.abspath(output_path)}")
+    plt.close()
+
+if __name__ == "__main__":
+    draw_kasmu_v4_architecture()
