@@ -13,6 +13,15 @@ Current autonomous models often output predictions in a **mathematical vacuum** 
 
 ---
 
+## 🔗 Resources & Datasets
+
+| Resource | Link | Description |
+| :--- | :--- | :--- |
+| **Training Notebook** | [Kaggle: LSTM-GRU Hybrid](https://www.kaggle.com/code/priyangshumukherjee/lstm-gru-hybrid-for-argoverse-motion-forecasting) | Full training pipeline, architecture implementation, and model weights. |
+| **Dataset** | [Argoverse 2 Dataset](https://www.argoverse.org/av2.html) | The official Argoverse 2 Motion Forecasting Dataset used for training and validation. |
+
+---
+
 ## ✨ Simulation Workbench (Pro Edition)
 
 The system includes a premium, dual-mode web interface at **[http://localhost:8000](http://localhost:8000)** featuring:
@@ -183,7 +192,23 @@ Each dot = the final position error of one scenario at the end of the **3-second
 
 ---
 
-## 📦 Installation & Usage
+## 📦 Reproducibility & Installation
+
+The model weights are included in this repository (`Model/`), so you do not need to train the model from scratch. However, if you wish to explore the training process, review the architecture implementation, or train it yourself, refer to the **Training Notebook** linked in the Resources section above.
+
+To ensure 100% reproducibility on Windows, we have provided automated setup and run scripts.
+
+### Option A: Automated (Recommended for Windows)
+```powershell
+# 1. Double-click setup.bat or run it in powershell
+.\setup.bat
+
+# 2. Double-click run.bat or run it in powershell
+.\run.bat
+```
+
+### Option B: Manual
+
 
 ```powershell
 # 1. Environment

@@ -1,8 +1,9 @@
 # Data and Models
 val/
-Model/
 zf_training_data.npy
 Visualisations/
+*.log
+server_log.txt
 
 # Python and Environment
 __pycache__/

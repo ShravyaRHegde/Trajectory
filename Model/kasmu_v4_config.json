@@ -1,0 +1,1 @@
+{"input_dim": 5, "hidden_dim": 256, "future_steps": 30, "dt": 0.1}
